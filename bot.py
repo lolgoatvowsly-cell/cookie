@@ -7,8 +7,12 @@ from datetime import datetime
 import asyncio
 import os
 from dotenv import load_dotenv
+from keep_alive import keep_alive
 
 load_dotenv()
+
+# Start Flask web server for uptime monitoring
+keep_alive()
 
 # ============ CONFIGURATION ============
 DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
@@ -84,7 +88,7 @@ async def update_stock_channel():
             pending_channel = bot.get_channel(PENDING_CHANNEL_ID)
             if pending_channel:
                 embed = discord.Embed(
-                    title="⚠️ Low Stock Alert",
+                    title="Low Stock Alert",
                     description=f"Stock is running low!\n\n**Current Stock:** {stock_count} account(s)\n**Status:** Need more accounts",
                     color=0xFFA500  # Orange
                 )
@@ -95,7 +99,7 @@ async def update_stock_channel():
             pending_channel = bot.get_channel(PENDING_CHANNEL_ID)
             if pending_channel:
                 embed = discord.Embed(
-                    title="🔴 Out of Stock",
+                    title="Out of Stock",
                     description="**All accounts have been sold!**\n\nPlease add more stock immediately.",
                     color=0xFF0000  # Red
                 )
@@ -103,7 +107,7 @@ async def update_stock_channel():
                 await pending_channel.send("@everyone", embed=embed)
                 
     except Exception as e:
-        log(f'❌ Error updating stock channel: {e}')
+        log(f'<:emoji:1456014722343108729> Error updating stock channel: {e}')
 
 # ============ ROBLOX API FUNCTIONS ============
 def get_roblox_user_id(username):
@@ -157,25 +161,25 @@ def check_user_purchase(username, user_id):
 # ============ BOT EVENTS ============
 @bot.event
 async def on_ready():
-    log(f'✅ Logged in as {bot.user.name}')
+    log(f'<:emoji:1458478740064440535> Logged in as {bot.user.name}')
     
     # Load existing purchases
     try:
         existing_sales = get_recent_sales(limit=50)
         for sale in existing_sales:
             used_purchase_ids.add(sale.get('idHash'))
-        log(f'✅ Marked {len(used_purchase_ids)} existing purchases as used')
+        log(f'<:emoji:1458478740064440535> Marked {len(used_purchase_ids)} existing purchases as used')
     except Exception as e:
-        log(f'⚠️ Could not load existing purchases: {e}')
+        log(f'Could not load existing purchases: {e}')
     
     # Update stock channel
     await update_stock_channel()
     
     try:
         synced = await tree.sync()
-        log(f'✅ Synced {len(synced)} commands')
+        log(f'<:emoji:1458478740064440535> Synced {len(synced)} commands')
     except Exception as e:
-        log(f'❌ Error syncing commands: {e}')
+        log(f'<:emoji:1456014722343108729> Error syncing commands: {e}')
 
 # ============ COMMANDS ============
 @tree.command(name="buy", description="Purchase ranked account")
@@ -192,13 +196,13 @@ async def buy_command(interaction: discord.Interaction, username: str, quantity:
     
     user_id = get_roblox_user_id(username)
     if not user_id:
-        await interaction.followup.send(f"❌ Roblox user '{username}' not found!", ephemeral=True)
+        await interaction.followup.send(f"<:emoji:1456014722343108729> Roblox user '{username}' not found!", ephemeral=True)
         return
     
     # Check stock
     if len(stock) < quantity:
         await interaction.followup.send(
-            f"⚠️ Not enough stock! Available: {len(stock)}, Requested: {quantity}",
+            f"<:emoji:1456014722343108729> Not enough stock! Available: {len(stock)}, Requested: {quantity}",
             ephemeral=True
         )
         return
@@ -217,7 +221,7 @@ async def buy_command(interaction: discord.Interaction, username: str, quantity:
         @discord.ui.button(label="Validate Purchase", style=discord.ButtonStyle.primary, emoji=EMOJI_VALIDATE)
         async def validate_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
             if button_interaction.user.id != interaction.user.id:
-                await button_interaction.response.send_message("❌ This is not your purchase!", ephemeral=True)
+                await button_interaction.response.send_message("<:emoji:1456014722343108729> This is not your purchase!", ephemeral=True)
                 return
             
             await button_interaction.response.defer(ephemeral=True)
@@ -228,7 +232,7 @@ async def buy_command(interaction: discord.Interaction, username: str, quantity:
                 pending_channel = bot.get_channel(PENDING_CHANNEL_ID)
                 if pending_channel:
                     embed = discord.Embed(
-                        title="🔴 Pending Order - No Stock",
+                        title="Pending Order - No Stock",
                         description=f"**Customer:** {interaction.user.mention}\n**Discord:** {interaction.user.name}#{interaction.user.discriminator}\n**Roblox Username:** {username}\n**Quantity:** {quantity} account(s)\n\n**Status:** Waiting for stock to be added",
                         color=0xFF0000  # Red
                     )
@@ -237,7 +241,7 @@ async def buy_command(interaction: discord.Interaction, username: str, quantity:
                     await pending_channel.send("@everyone", embed=embed)
                 
                 await button_interaction.followup.send(
-                    "⚠️ **Are you sure you want to buy?**\n\nThere is no stock available. You will be added to the waitlist.",
+                    "<:emoji:1456014722343108729> **Are you sure you want to buy?**\n\nThere is no stock available. You will be added to the waitlist.",
                     ephemeral=True
                 )
                 return
@@ -251,9 +255,9 @@ async def buy_command(interaction: discord.Interaction, username: str, quantity:
 
 async def monitor_and_deliver(interaction, roblox_username, user_id, quantity):
     """Monitor purchase and deliver accounts"""
-    log(f'👀 Monitoring purchase for {roblox_username} ({quantity} accounts)')
+    log(f'Monitoring purchase for {roblox_username} ({quantity} accounts)')
     
-    await interaction.followup.send("⏳ Waiting for purchase confirmation...", ephemeral=True)
+    await interaction.followup.send("Waiting for purchase confirmation...", ephemeral=True)
     
     max_attempts = 60
     attempt = 0
@@ -266,11 +270,11 @@ async def monitor_and_deliver(interaction, roblox_username, user_id, quantity):
             purchase_id = sale.get('idHash')
             used_purchase_ids.add(purchase_id)
             
-            log(f'✅ Purchase confirmed for {roblox_username}! Delivering...')
+            log(f'<:emoji:1458478740064440535> Purchase confirmed for {roblox_username}! Delivering...')
             
             # Get accounts from stock
             if len(stock) < quantity:
-                await interaction.followup.send("❌ Stock depleted! Contact admin.", ephemeral=True)
+                await interaction.followup.send("<:emoji:1456014722343108729> Stock depleted! Contact admin.", ephemeral=True)
                 return
             
             accounts = [stock.pop(0) for _ in range(quantity)]
@@ -350,7 +354,7 @@ async def monitor_and_deliver(interaction, roblox_username, user_id, quantity):
                         await admin_channel.send(embed=log_embed)
                         log(f'📊 Logged order {order_id} to admin channel')
                 except Exception as e:
-                    log(f'⚠️ Could not log to admin channel: {e}')
+                    log(f'Could not log to admin channel: {e}')
                 
                 # Assign buyer role
                 try:
@@ -361,17 +365,17 @@ async def monitor_and_deliver(interaction, roblox_username, user_id, quantity):
                             buyer_role = guild.get_role(BUYER_ROLE_ID)
                             if buyer_role and buyer_role not in member.roles:
                                 await member.add_roles(buyer_role)
-                                log(f'✅ Assigned buyer role to {interaction.user.name}')
+                                log(f'<:emoji:1458478740064440535> Assigned buyer role to {interaction.user.name}')
                 except Exception as e:
-                    log(f'⚠️ Could not assign buyer role: {e}')
+                    log(f'Could not assign buyer role: {e}')
                 
-                await interaction.followup.send(f"✅ Purchase confirmed! Check your DMs!\n**Order ID:** `{order_id}`", ephemeral=True)
+                await interaction.followup.send(f"<:emoji:1458478740064440535> Purchase confirmed! Check your DMs!\n**Order ID:** `{order_id}`", ephemeral=True)
                 
                 # Send webhook notification
                 if WEBHOOK_URL:
                     webhook_data = {
                         "embeds": [{
-                            "title": "💰 Purchase Completed",
+                            "title": "Purchase Completed",
                             "description": f"**User:** {interaction.user.mention}\n**Roblox:** {roblox_username}\n**Quantity:** {quantity}\n**Remaining Stock:** {len(stock)}",
                             "color": 10181046,
                             "timestamp": datetime.utcnow().isoformat()
@@ -382,15 +386,15 @@ async def monitor_and_deliver(interaction, roblox_username, user_id, quantity):
                 return
                 
             except discord.Forbidden:
-                log(f'❌ Cannot DM {interaction.user.name}')
-                await interaction.followup.send("❌ Cannot send DM! Enable DMs and contact admin.", ephemeral=True)
+                log(f'<:emoji:1456014722343108729> Cannot DM {interaction.user.name}')
+                await interaction.followup.send("<:emoji:1456014722343108729> Cannot send DM! Enable DMs and contact admin.", ephemeral=True)
                 # Put accounts back
                 stock.extend(accounts)
                 await update_stock_channel()
                 return
             except Exception as e:
-                log(f'❌ Error delivering: {e}')
-                await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
+                log(f'<:emoji:1456014722343108729> Error delivering: {e}')
+                await interaction.followup.send(f"<:emoji:1456014722343108729> Error: {str(e)}", ephemeral=True)
                 stock.extend(accounts)
                 await update_stock_channel()
                 return
@@ -398,20 +402,20 @@ async def monitor_and_deliver(interaction, roblox_username, user_id, quantity):
         await asyncio.sleep(30)
         attempt += 1
     
-    log(f'⏱️ Purchase timeout for {roblox_username}')
-    await interaction.followup.send("⏱️ Purchase not detected after 30 minutes.", ephemeral=True)
+    log(f'Purchase timeout for {roblox_username}')
+    await interaction.followup.send("Purchase not detected after 30 minutes.", ephemeral=True)
 
 @tree.command(name="addstock", description="fr")
 @app_commands.describe(account="fr")
 async def addstock_command(interaction: discord.Interaction, account: str):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("❌ Admin only!", ephemeral=True)
+        await interaction.response.send_message("<:emoji:1456014722343108729> Admin only!", ephemeral=True)
         return
     
     try:
         parts = account.split(':', 2)
         if len(parts) != 3:
-            await interaction.response.send_message("❌ Invalid format! Use: username:password:cookie", ephemeral=True)
+            await interaction.response.send_message("<:emoji:1456014722343108729> Invalid format! Use: username:password:cookie", ephemeral=True)
             return
         
         username, password, cookie = parts
@@ -422,16 +426,16 @@ async def addstock_command(interaction: discord.Interaction, account: str):
         })
         
         await update_stock_channel()
-        await interaction.response.send_message(f"✅ Added account! Total stock: {len(stock)}", ephemeral=True)
+        await interaction.response.send_message(f"<:emoji:1458478740064440535> Added account! Total stock: {len(stock)}", ephemeral=True)
         log(f'📦 Added stock: {username} - Total: {len(stock)}')
         
     except Exception as e:
-        await interaction.response.send_message(f"❌ Error: {str(e)}", ephemeral=True)
+        await interaction.response.send_message(f"<:emoji:1456014722343108729> Error: {str(e)}", ephemeral=True)
 
 @tree.command(name="stock", description="fr")
 async def stock_command(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("❌ Admin only!", ephemeral=True)
+        await interaction.response.send_message("<:emoji:1456014722343108729> Admin only!", ephemeral=True)
         return
     
     embed = discord.Embed(
@@ -453,7 +457,7 @@ async def stock_command(interaction: discord.Interaction):
 @app_commands.describe(username="fr")
 async def removestock_command(interaction: discord.Interaction, username: str):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("❌ Admin only!", ephemeral=True)
+        await interaction.response.send_message("<:emoji:1456014722343108729> Admin only!", ephemeral=True)
         return
     
     # Find and remove account
@@ -462,18 +466,18 @@ async def removestock_command(interaction: discord.Interaction, username: str):
             removed = stock.pop(i)
             await update_stock_channel()
             await interaction.response.send_message(
-                f"✅ Removed account: `{removed['username']}`\nRemaining stock: {len(stock)}",
+                f"<:emoji:1458478740064440535> Removed account: `{removed['username']}`\nRemaining stock: {len(stock)}",
                 ephemeral=True
             )
             log(f'🗑️ Removed stock: {removed["username"]} - Remaining: {len(stock)}')
             return
     
-    await interaction.response.send_message(f"❌ Account `{username}` not found in stock!", ephemeral=True)
+    await interaction.response.send_message(f"<:emoji:1456014722343108729> Account `{username}` not found in stock!", ephemeral=True)
 
 @tree.command(name="topbuyers", description="fr")
 async def topbuyers_command(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("❌ Admin only!", ephemeral=True)
+        await interaction.response.send_message("<:emoji:1456014722343108729> Admin only!", ephemeral=True)
         return
     
     if not purchase_history:
@@ -496,7 +500,7 @@ async def topbuyers_command(interaction: discord.Interaction):
     sorted_buyers = sorted(buyer_stats.items(), key=lambda x: x[1]['robux'], reverse=True)
     
     embed = discord.Embed(
-        title="👑 Top Buyers - All Time",
+        title="Top Buyers - All Time",
         description="Top customers by **total Robux spent**",
         color=0xFFD700  # Gold
     )
@@ -510,7 +514,7 @@ async def topbuyers_command(interaction: discord.Interaction):
         
         embed.add_field(
             name=f"{medal} {username}",
-            value=f"**💰 Robux Spent:** {stats['robux']:,}\n**Accounts:** {stats['accounts']}\n**Orders:** {stats['purchases']}",
+            value=f"**Robux Spent:** {stats['robux']:,}\n**Accounts:** {stats['accounts']}\n**Orders:** {stats['purchases']}",
             inline=True
         )
     
@@ -523,11 +527,11 @@ async def topbuyers_command(interaction: discord.Interaction):
 @app_commands.describe(user="fr")
 async def customerinfo_command(interaction: discord.Interaction, user: discord.User):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("❌ Admin only!", ephemeral=True)
+        await interaction.response.send_message("<:emoji:1456014722343108729> Admin only!", ephemeral=True)
         return
     
     if user.id not in purchase_history:
-        await interaction.response.send_message(f"❌ {user.name} has no purchase history!", ephemeral=True)
+        await interaction.response.send_message(f"<:emoji:1456014722343108729> {user.name} has no purchase history!", ephemeral=True)
         return
     
     purchases = purchase_history[user.id]
@@ -562,7 +566,7 @@ async def customerinfo_command(interaction: discord.Interaction, user: discord.U
 @app_commands.describe(order_id="fr")
 async def orderid_command(interaction: discord.Interaction, order_id: str):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("❌ Admin only!", ephemeral=True)
+        await interaction.response.send_message("<:emoji:1456014722343108729> Admin only!", ephemeral=True)
         return
     
     await interaction.response.defer(ephemeral=True)
@@ -581,7 +585,7 @@ async def orderid_command(interaction: discord.Interaction, order_id: str):
             break
     
     if not found_order:
-        await interaction.followup.send(f"❌ Order ID `{order_id}` not found!", ephemeral=True)
+        await interaction.followup.send(f"<:emoji:1456014722343108729> Order ID `{order_id}` not found!", ephemeral=True)
         return
     
     # Send full order details to admin's DM
@@ -625,13 +629,13 @@ async def orderid_command(interaction: discord.Interaction, order_id: str):
             files.append(cookie_file)
         
         await dm_channel.send(embed=embed, files=files)
-        await interaction.followup.send(f"✅ Order details sent to your DMs!", ephemeral=True)
+        await interaction.followup.send(f"<:emoji:1458478740064440535> Order details sent to your DMs!", ephemeral=True)
         log(f"📋 {interaction.user.name} looked up order {order_id}")
         
     except discord.Forbidden:
-        await interaction.followup.send("❌ Cannot send DMs! Enable DMs.", ephemeral=True)
+        await interaction.followup.send("<:emoji:1456014722343108729> Cannot send DMs! Enable DMs.", ephemeral=True)
     except Exception as e:
-        await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
+        await interaction.followup.send(f"<:emoji:1456014722343108729> Error: {str(e)}", ephemeral=True)
 
 @tree.command(name="announce", description="fr")
 @app_commands.describe(
@@ -640,13 +644,13 @@ async def orderid_command(interaction: discord.Interaction, order_id: str):
 )
 async def announce_command(interaction: discord.Interaction, channel: discord.TextChannel, message: str):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("❌ Admin only!", ephemeral=True)
+        await interaction.response.send_message("<:emoji:1456014722343108729> Admin only!", ephemeral=True)
         return
     
     # Get all members with buyer role
     buyer_role = interaction.guild.get_role(BUYER_ROLE_ID)
     if not buyer_role:
-        await interaction.response.send_message("❌ Buyer role not found!", ephemeral=True)
+        await interaction.response.send_message("<:emoji:1456014722343108729> Buyer role not found!", ephemeral=True)
         return
     
     embed = discord.Embed(
@@ -659,13 +663,13 @@ async def announce_command(interaction: discord.Interaction, channel: discord.Te
     
     # Mention the role in the channel
     await channel.send(f"{buyer_role.mention}", embed=embed)
-    await interaction.response.send_message(f"✅ Announcement sent to {channel.mention}!", ephemeral=True)
+    await interaction.response.send_message(f"<:emoji:1458478740064440535> Announcement sent to {channel.mention}!", ephemeral=True)
     log(f"📢 {interaction.user.name} sent announcement to {channel.name}")
 
 @tree.command(name="clearstock", description="fr")
 async def clearstock_command(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("❌ Admin only!", ephemeral=True)
+        await interaction.response.send_message("<:emoji:1456014722343108729> Admin only!", ephemeral=True)
         return
     
     # Confirmation
@@ -677,13 +681,13 @@ async def clearstock_command(interaction: discord.Interaction):
         @discord.ui.button(label="Yes, Clear All Stock", style=discord.ButtonStyle.danger)
         async def confirm_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
             if button_interaction.user.id != interaction.user.id:
-                await button_interaction.response.send_message("❌ Not your button!", ephemeral=True)
+                await button_interaction.response.send_message("<:emoji:1456014722343108729> Not your button!", ephemeral=True)
                 return
             
             removed_count = len(stock)
             stock.clear()  # Clear the list
             
-            await button_interaction.response.send_message(f"✅ Cleared {removed_count} accounts from stock!", ephemeral=True)
+            await button_interaction.response.send_message(f"<:emoji:1458478740064440535> Cleared {removed_count} accounts from stock!", ephemeral=True)
             log(f"🗑️ {interaction.user.name} cleared all stock ({removed_count} accounts)")
             
             # Update stock channel to show out of stock
@@ -694,15 +698,15 @@ async def clearstock_command(interaction: discord.Interaction):
         @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
         async def cancel_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
             if button_interaction.user.id != interaction.user.id:
-                await button_interaction.response.send_message("❌ Not your button!", ephemeral=True)
+                await button_interaction.response.send_message("<:emoji:1456014722343108729> Not your button!", ephemeral=True)
                 return
             
-            await button_interaction.response.send_message("❌ Cancelled", ephemeral=True)
+            await button_interaction.response.send_message("<:emoji:1456014722343108729> Cancelled", ephemeral=True)
             self.stop()
     
     view = ConfirmView()
     await interaction.response.send_message(
-        f"⚠️ **Are you sure you want to clear ALL stock?**\n\nThis will remove **{len(stock)} account(s)**!\n\nChannel will show: 🔴 (OUT OF STOCK)",
+        f"**Are you sure you want to clear ALL stock?**\n\nThis will remove **{len(stock)} account(s)**!\n\nChannel will show: 🔴 (OUT OF STOCK)",
         view=view,
         ephemeral=True
     )
@@ -718,7 +722,7 @@ async def clearstock_command(interaction: discord.Interaction):
 ])
 async def test_command(interaction: discord.Interaction, user: discord.User, quantity: int):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("❌ Admin only!", ephemeral=True)
+        await interaction.response.send_message("<:emoji:1456014722343108729> Admin only!", ephemeral=True)
         return
     
     await interaction.response.defer(ephemeral=True)
@@ -726,7 +730,7 @@ async def test_command(interaction: discord.Interaction, user: discord.User, qua
     # Check stock
     if len(stock) < quantity:
         await interaction.followup.send(
-            f"⚠️ Not enough stock! Available: {len(stock)}, Requested: {quantity}",
+            f"<:emoji:1456014722343108729> Not enough stock! Available: {len(stock)}, Requested: {quantity}",
             ephemeral=True
         )
         return
@@ -744,7 +748,7 @@ async def test_command(interaction: discord.Interaction, user: discord.User, qua
         for i, acc in enumerate(accounts, 1):
             account_text += f"**Account {i}:**\n```ts\n{acc['username']}:{acc['password']}```\n"
         
-        dm_message = f"**🧪 TEST DELIVERY - Here is your __ranked eligible account__**\n\n{account_text}\n**PC:** use ```ts user:Pass``` or **mobile** do `user:pass`\n\n**Cookie files attached below:**"
+        dm_message = f"**TEST DELIVERY - Here is your __ranked eligible account__**\n\n{account_text}\n**PC:** use ```ts user:Pass``` or **mobile** do `user:pass`\n\n**Cookie files attached below:**"
         
         # Create cookie files
         files = []
@@ -767,26 +771,26 @@ async def test_command(interaction: discord.Interaction, user: discord.User, qua
                     buyer_role = guild.get_role(BUYER_ROLE_ID)
                     if buyer_role and buyer_role not in member.roles:
                         await member.add_roles(buyer_role)
-                        log(f'✅ Assigned buyer role to {user.name}')
+                        log(f'<:emoji:1458478740064440535> Assigned buyer role to {user.name}')
         except Exception as e:
-            log(f'⚠️ Could not assign buyer role: {e}')
+            log(f'Could not assign buyer role: {e}')
         
         await interaction.followup.send(
-            f"✅ Test delivery sent to {user.mention}!\n**Quantity:** {quantity} account(s)\n**No logging, no purchase required**",
+            f"<:emoji:1458478740064440535> Test delivery sent to {user.mention}!\n**Quantity:** {quantity} account(s)\n**No logging, no purchase required**",
             ephemeral=True
         )
-        log(f"🧪 TEST: {interaction.user.name} sent {quantity} account(s) to {user.name} (FREE)")
+        log(f"TEST: {interaction.user.name} sent {quantity} account(s) to {user.name} (FREE)")
         
     except discord.Forbidden:
-        log(f'❌ Cannot DM {user.name}')
-        await interaction.followup.send(f"❌ Cannot send DM to {user.mention}! Enable DMs.", ephemeral=True)
+        log(f'<:emoji:1456014722343108729> Cannot DM {user.name}')
+        await interaction.followup.send(f"<:emoji:1456014722343108729> Cannot send DM to {user.mention}! Enable DMs.", ephemeral=True)
         # Put accounts back
         stock.extend(accounts)
         await update_stock_channel()
         return
     except Exception as e:
-        log(f'❌ Error in test delivery: {e}')
-        await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
+        log(f'<:emoji:1456014722343108729> Error in test delivery: {e}')
+        await interaction.followup.send(f"<:emoji:1456014722343108729> Error: {str(e)}", ephemeral=True)
         stock.extend(accounts)
         await update_stock_channel()
         return
@@ -797,7 +801,7 @@ async def purchasehistory_command(interaction: discord.Interaction, roblox_usern
     # Check if user has buyer role
     member = interaction.guild.get_member(interaction.user.id) if interaction.guild else None
     if not member or BUYER_ROLE_ID not in [role.id for role in member.roles]:
-        await interaction.response.send_message("❌ You need the Buyer role to use this command!", ephemeral=True)
+        await interaction.response.send_message("<:emoji:1456014722343108729> You need the Buyer role to use this command!", ephemeral=True)
         return
     
     await interaction.response.defer(ephemeral=True)
@@ -805,7 +809,7 @@ async def purchasehistory_command(interaction: discord.Interaction, roblox_usern
     # Get Roblox user ID
     user_id = get_roblox_user_id(roblox_username)
     if not user_id:
-        await interaction.followup.send(f"❌ Roblox user '{roblox_username}' not found!", ephemeral=True)
+        await interaction.followup.send(f"<:emoji:1456014722343108729> Roblox user '{roblox_username}' not found!", ephemeral=True)
         return
     
     # Get ALL sales from group
@@ -843,7 +847,7 @@ async def purchasehistory_command(interaction: discord.Interaction, roblox_usern
         
         if not all_purchases:
             await interaction.followup.send(
-                f"❌ No purchase history found for Roblox user '{roblox_username}'!",
+                f"<:emoji:1456014722343108729> No purchase history found for Roblox user '{roblox_username}'!",
                 ephemeral=True
             )
             return
@@ -902,7 +906,7 @@ async def purchasehistory_command(interaction: discord.Interaction, roblox_usern
         if delivered_accounts:
             # Send delivered accounts
             accounts_embed = discord.Embed(
-                title="🎁 Delivered Accounts",
+                title="Delivered Accounts",
                 description=f"Accounts that were delivered to you for {roblox_username}:",
                 color=0x00FF00
             )
@@ -928,70 +932,15 @@ async def purchasehistory_command(interaction: discord.Interaction, roblox_usern
         log(f"📧 Sent purchase history to {interaction.user.name} for Roblox: {roblox_username}")
         
     except discord.Forbidden:
-        await interaction.followup.send("❌ Cannot send DMs! Enable DMs and try again.", ephemeral=True)
+        await interaction.followup.send("<:emoji:1456014722343108729> Cannot send DMs! Enable DMs and try again.", ephemeral=True)
     except Exception as e:
-        await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
-        log(f"❌ Error fetching history: {e}")
+        await interaction.followup.send(f"<:emoji:1456014722343108729> Error: {str(e)}", ephemeral=True)
+        log(f"<:emoji:1456014722343108729> Error fetching history: {e}")
 
 # ============ RUN BOT ============
 if __name__ == "__main__":
     if not DISCORD_BOT_TOKEN:
-        print("❌ ERROR: Set DISCORD_BOT_TOKEN!")
+        print("<:emoji:1456014722343108729> ERROR: Set DISCORD_BOT_TOKEN!")
     else:
         log('🚀 Starting bot...')
         bot.run(DISCORD_BOT_TOKEN)
-
-"""
-============================================
-ADDITIONAL FEATURES YOU CAN ADD:
-============================================
-
-1. /clearstock - Remove all stock at once
-2. /viewstock - Show detailed stock info with passwords
-3. /stats - Show total sales, revenue, etc.
-4. /blacklist <user_id> - Prevent user from buying
-5. /whitelist <user_id> - Remove from blacklist
-6. /refund <user_id> - Add account back to stock for refund
-7. /checkpurchase <username> - Manually check if someone bought
-8. /changeprices <quantity> <robux> <usd> - Update prices
-9. /backup - Save stock to file
-10. /restore - Load stock from file
-11. /waitlist - Show all pending orders
-12. /complete <user_id> - Mark pending order as completed
-13. /cancel <user_id> - Cancel pending order
-14. /earnings - Show total earnings (need to track sales)
-15. /topbuyers - Show users who bought most
-16. /restock <amount> - Bulk add placeholder accounts
-17. /teststock - Add test account for testing
-18. /log - Show recent transactions
-19. /customerinfo <user_id> - Show user's purchase history
-20. /announce <message> - Send announcement to all customers
-
-DATABASE FEATURES:
-- Save stock to database (SQLite/MongoDB)
-- Track all purchases with timestamps
-- Store customer purchase history
-- Blacklist system
-- Automatic backups
-
-AUTOMATION FEATURES:
-- Auto-delivery without validation (instant)
-- Schedule stock alerts
-- Auto-refill notifications
-- Purchase analytics dashboard
-- Revenue tracking
-
-SECURITY FEATURES:
-- Rate limiting on purchases
-- Cooldown between buys
-- Purchase verification codes
-- Admin action logging
-- Backup system for stock
-
-UI IMPROVEMENTS:
-- Buttons for stock management
-- Dropdown menus for quantities
-- Progress bars for stock levels
-- Reaction-based purchase flow
-- Interactive stock dashboard
-"""
