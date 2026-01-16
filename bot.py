@@ -6,6 +6,7 @@ from time import time
 from datetime import datetime
 import asyncio
 import os
+import io
 from dotenv import load_dotenv
 from keep_alive import keep_alive
 
@@ -280,34 +281,53 @@ async def monitor_and_deliver(interaction, roblox_username, user_id, quantity):
             accounts = [stock.pop(0) for _ in range(quantity)]
             await update_stock_channel()
             
+            # Generate custom order ID FIRST
+            import random
+            import string
+            order_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            
             # Send DM with accounts
             try:
                 dm_channel = await interaction.user.create_dm()
                 
-                # Create account details message
-                account_text = ""
+                # Create account details embed for buyer
+                buyer_embed = discord.Embed(
+                    title="🎉 Purchase Successful!",
+                    description=f"**Order ID:** `{order_id}`\n\nThank you for your purchase! Below are your account details.",
+                    color=0x00FF00  # Green
+                )
+                
+                # Add account credentials to buyer embed
                 for i, acc in enumerate(accounts, 1):
-                    account_text += f"**Account {i}:**\n```ts\n{acc['username']}:{acc['password']}```\n"
+                    buyer_embed.add_field(
+                        name=f"Account {i} - {acc['username']}",
+                        value=f"**Username:** `{acc['username']}`\n**Password:** `{acc['password']}`",
+                        inline=False
+                    )
                 
-                dm_message = f"**Here is your __ranked eligible account__**\n\n{account_text}\n**PC:** use ```ts user:Pass``` or **mobile** do `user:pass`\n\n**Cookie files attached below:**"
+                buyer_embed.add_field(
+                    name="📁 Cookie Files",
+                    value="Cookie files are attached below as `.txt` files. Download and use them to login easily!\n\n**How to use:**\n• PC: Use browser extension to import cookie\n• Mobile: Copy cookie content and paste in login page",
+                    inline=False
+                )
                 
-                # Create cookie files
+                buyer_embed.set_footer(text=f"Order ID: {order_id} • Keep this for your records!")
+                buyer_embed.timestamp = datetime.utcnow()
+                
+                # Create cookie files as ACTUAL TXT FILES using BytesIO
                 files = []
                 for i, acc in enumerate(accounts, 1):
-                    cookie_content = acc['cookie']
+                    # Use BytesIO to create file in memory
+                    cookie_bytes = io.BytesIO(acc['cookie'].encode('utf-8'))
                     file = discord.File(
-                        fp=cookie_content.encode(),
-                        filename=f"account_{i}_cookie.txt"
+                        fp=cookie_bytes,
+                        filename=f"{acc['username']}_cookie.txt"
                     )
                     files.append(file)
                 
-                await dm_channel.send(dm_message, files=files)
+                # Send embed with cookie files attached
+                await dm_channel.send(embed=buyer_embed, files=files)
                 log(f'📧 Delivered {quantity} account(s) to {interaction.user.name}')
-                
-                # Generate custom order ID
-                import random
-                import string
-                order_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
                 
                 # Track purchase in history
                 if interaction.user.id not in purchase_history:
@@ -325,33 +345,39 @@ async def monitor_and_deliver(interaction, roblox_username, user_id, quantity):
                 }
                 purchase_history[interaction.user.id].append(purchase_data)
                 
-                # Log to admin purchases channel
+                # Log to admin purchases channel - SEND THE EXACT SAME EMBED THE BUYER GOT
                 try:
                     admin_channel = bot.get_channel(ADMIN_PURCHASES_CHANNEL_ID)
                     if admin_channel:
-                        log_embed = discord.Embed(
-                            title=f"📦 Order #{order_id}",
-                            description="**New purchase delivered**",
+                        # Create admin embed with buyer's info + the same details
+                        admin_embed = discord.Embed(
+                            title=f"📦 Order #{order_id} - DELIVERED",
+                            description=f"**Customer:** {interaction.user.mention} (`{interaction.user.id}`)\n**Discord:** {interaction.user.name}#{interaction.user.discriminator}\n**Roblox:** {roblox_username}\n**Quantity:** {quantity} account(s)\n**Robux Paid:** {sale.get('currency', {}).get('amount', 0):,}",
                             color=0x00FF00  # Green
                         )
                         
-                        log_embed.add_field(name="Discord User", value=f"{interaction.user.mention} ({interaction.user.id})", inline=False)
-                        log_embed.add_field(name="Roblox Username", value=roblox_username, inline=True)
-                        log_embed.add_field(name="Quantity", value=f"{quantity} account(s)", inline=True)
-                        log_embed.add_field(name="Robux Paid", value=f"{sale.get('currency', {}).get('amount', 0):,}", inline=True)
-                        
-                        # Add account details
+                        # Add the same account details that were sent to buyer
                         for i, acc in enumerate(accounts, 1):
-                            log_embed.add_field(
-                                name=f"Account {i}",
+                            admin_embed.add_field(
+                                name=f"Account {i} - {acc['username']}",
                                 value=f"**Username:** `{acc['username']}`\n**Password:** `{acc['password']}`\n**Cookie:** `{acc['cookie'][:50]}...`",
                                 inline=False
                             )
                         
-                        log_embed.set_footer(text=f"Order ID: {order_id}")
-                        log_embed.timestamp = datetime.utcnow()
+                        admin_embed.set_footer(text=f"Order ID: {order_id}")
+                        admin_embed.timestamp = datetime.utcnow()
                         
-                        await admin_channel.send(embed=log_embed)
+                        # Also send cookie files to admin channel
+                        admin_files = []
+                        for i, acc in enumerate(accounts, 1):
+                            cookie_bytes = io.BytesIO(acc['cookie'].encode('utf-8'))
+                            file = discord.File(
+                                fp=cookie_bytes,
+                                filename=f"{order_id}_{acc['username']}_cookie.txt"
+                            )
+                            admin_files.append(file)
+                        
+                        await admin_channel.send(embed=admin_embed, files=admin_files)
                         log(f'📊 Logged order {order_id} to admin channel')
                 except Exception as e:
                     log(f'Could not log to admin channel: {e}')
@@ -562,8 +588,8 @@ async def customerinfo_command(interaction: discord.Interaction, user: discord.U
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-@tree.command(name="orderid", description="fr")
-@app_commands.describe(order_id="fr")
+@tree.command(name="orderid", description="Look up order by ID and get full details in DM")
+@app_commands.describe(order_id="Order ID to look up")
 async def orderid_command(interaction: discord.Interaction, order_id: str):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("<:emoji:1456014722343108729> Admin only!", ephemeral=True)
@@ -602,7 +628,7 @@ async def orderid_command(interaction: discord.Interaction, order_id: str):
         buyer_user = bot.get_user(found_user_id)
         buyer_name = buyer_user.name if buyer_user else f"User {found_user_id}"
         
-        embed.add_field(name="Discord Buyer", value=f"{buyer_name} ({found_user_id})", inline=False)
+        embed.add_field(name="Discord Buyer", value=f"{buyer_name} (`{found_user_id}`)", inline=False)
         embed.add_field(name="Roblox Username", value=found_order['roblox_username'], inline=True)
         embed.add_field(name="Quantity", value=f"{found_order['quantity']} account(s)", inline=True)
         embed.add_field(name="Robux Paid", value=f"{found_order['robux']:,}", inline=True)
@@ -622,8 +648,9 @@ async def orderid_command(interaction: discord.Interaction, order_id: str):
         # Send cookie files
         files = []
         for i, acc in enumerate(found_order['accounts'], 1):
+            cookie_bytes = io.BytesIO(acc['cookie'].encode('utf-8'))
             cookie_file = discord.File(
-                fp=acc['cookie'].encode(),
+                fp=cookie_bytes,
                 filename=f"{acc['username']}_cookie.txt"
             )
             files.append(cookie_file)
@@ -743,24 +770,40 @@ async def test_command(interaction: discord.Interaction, user: discord.User, qua
     try:
         dm_channel = await user.create_dm()
         
-        # Create account details message
-        account_text = ""
-        for i, acc in enumerate(accounts, 1):
-            account_text += f"**Account {i}:**\n```ts\n{acc['username']}:{acc['password']}```\n"
+        # Create account details embed
+        test_embed = discord.Embed(
+            title="🧪 TEST DELIVERY",
+            description="**This is a test delivery - no payment required**",
+            color=0xFFFF00  # Yellow
+        )
         
-        dm_message = f"**TEST DELIVERY - Here is your __ranked eligible account__**\n\n{account_text}\n**PC:** use ```ts user:Pass``` or **mobile** do `user:pass`\n\n**Cookie files attached below:**"
+        for i, acc in enumerate(accounts, 1):
+            test_embed.add_field(
+                name=f"Account {i} - {acc['username']}",
+                value=f"**Username:** `{acc['username']}`\n**Password:** `{acc['password']}`",
+                inline=False
+            )
+        
+        test_embed.add_field(
+            name="📁 Cookie Files",
+            value="Cookie files are attached below as `.txt` files.",
+            inline=False
+        )
+        
+        test_embed.set_footer(text="TEST DELIVERY - Not tracked in purchase history")
+        test_embed.timestamp = datetime.utcnow()
         
         # Create cookie files
         files = []
         for i, acc in enumerate(accounts, 1):
-            cookie_content = acc['cookie']
+            cookie_bytes = io.BytesIO(acc['cookie'].encode('utf-8'))
             cookie_file = discord.File(
-                fp=cookie_content.encode(),
-                filename=f"account_{i}_cookie.txt"
+                fp=cookie_bytes,
+                filename=f"{acc['username']}_cookie.txt"
             )
             files.append(cookie_file)
         
-        await dm_channel.send(dm_message, files=files)
+        await dm_channel.send(embed=test_embed, files=files)
         
         # Assign buyer role
         try:
@@ -921,8 +964,9 @@ async def purchasehistory_command(interaction: discord.Interaction, roblox_usern
             # Send cookie files
             files = []
             for i, acc in enumerate(delivered_accounts, 1):
+                cookie_bytes = io.BytesIO(acc['cookie'].encode('utf-8'))
                 cookie_file = discord.File(
-                    fp=acc['cookie'].encode(),
+                    fp=cookie_bytes,
                     filename=f"account_{i}_cookie.txt"
                 )
                 files.append(cookie_file)
